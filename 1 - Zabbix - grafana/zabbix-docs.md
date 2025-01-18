@@ -2,6 +2,8 @@
 
 Este guia fornece instruções detalhadas para configurar um ambiente de monitoramento completo usando Zabbix 7.0, PostgreSQL e Grafana utilizando Docker Compose.
 
+Observação: Este é um projeto básico destinado a introduzir conceitos fundamentais sobre Infraestrutura como Código (IaC) na prática. Em uma etapa posterior, será publicado um tutorial sobre como criar este cenário utilizando Kubernetes, permitindo que os leitores aprendam a implantar e gerenciar aplicações de forma mais escalável e eficiente.
+
 ## Pré-requisitos
 
 - Docker instalado (versão 20.10 ou superior)
