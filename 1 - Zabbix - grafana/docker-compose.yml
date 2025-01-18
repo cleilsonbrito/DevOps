@@ -17,6 +17,37 @@ networks:
       config:
         - subnet: ${DB_SUBNET}
 
+volumes:
+  postgres-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/data/postgresql
+      o: bind
+    name: postgres-data
+    labels:
+      com.docker.volume.quota: "${POSTGRES_VOLUME_SIZE}G"
+
+  zabbix-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/data/zabbix
+      o: bind
+    name: zabbix-data
+    labels:
+      com.docker.volume.quota: "${ZABBIX_VOLUME_SIZE}G"
+
+  grafana-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PWD}/data/grafana
+      o: bind
+    name: grafana-data
+    labels:
+      com.docker.volume.quota: "${GRAFANA_VOLUME_SIZE}G"
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -25,6 +56,13 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          cpus: '${POSTGRES_CPU_LIMIT}'
+          memory: ${POSTGRES_MEMORY_LIMIT}M
+        reservations:
+          memory: ${POSTGRES_MEMORY_RESERVATION}M
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -49,6 +87,13 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '${ZABBIX_SERVER_CPU_LIMIT}'
+          memory: ${ZABBIX_SERVER_MEMORY_LIMIT}M
+        reservations:
+          memory: ${ZABBIX_SERVER_MEMORY_RESERVATION}M
     environment:
       DB_SERVER_HOST: ${POSTGRES_HOST}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -58,15 +103,15 @@ services:
     ports:
       - "${ZABBIX_SERVER_PORT}:10051"
     volumes:
+      - zabbix-data:/var/lib/zabbix
       - /etc/localtime:/etc/localtime:ro
       - ./zbx_env/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
       - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
       - ./zbx_env/var/lib/zabbix/export:/var/lib/zabbix/export:rw
       - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
       - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
-      - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
-      - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
-      - snmptraps:/var/lib/zabbix/snmptraps:rw
+      - ./zbx_env/var/lib/zabbix/ssh_keys:/usr/lib/zabbix/ssh_keys:ro
+      - ./zbx_env/var/lib/zabbix/mibs:/usr/lib/zabbix/mibs:ro
     networks:
       - backend-net
       - db-net
@@ -77,6 +122,13 @@ services:
     depends_on:
       - postgres
       - zabbix-server
+    deploy:
+      resources:
+        limits:
+          cpus: '${ZABBIX_WEB_CPU_LIMIT}'
+          memory: ${ZABBIX_WEB_MEMORY_LIMIT}M
+        reservations:
+          memory: ${ZABBIX_WEB_MEMORY_RESERVATION}M
     environment:
       DB_SERVER_HOST: ${POSTGRES_HOST}
       POSTGRES_DB: ${POSTGRES_DB}
@@ -98,6 +150,13 @@ services:
     depends_on:
       - postgres
       - zabbix-server
+    deploy:
+      resources:
+        limits:
+          cpus: '${GRAFANA_CPU_LIMIT}'
+          memory: ${GRAFANA_MEMORY_LIMIT}M
+        reservations:
+          memory: ${GRAFANA_MEMORY_RESERVATION}M
     environment:
       GF_INSTALL_PLUGINS: ${GRAFANA_PLUGINS}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
@@ -108,8 +167,3 @@ services:
     networks:
       - frontend-net
       - backend-net
-
-volumes:
-  postgres-data:
-  snmptraps:
-  grafana-data:

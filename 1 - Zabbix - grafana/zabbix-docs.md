@@ -71,6 +71,16 @@ mkdir -p zbx_env/var/lib/zabbix/modules
 mkdir -p zbx_env/var/lib/zabbix/enc
 mkdir -p zbx_env/var/lib/zabbix/ssh_keys
 mkdir -p zbx_env/var/lib/zabbix/mibs
+
+
+# Criar diretórios para os volumes
+mkdir -p data/{postgresql,zabbix,grafana}
+
+# Ajustar permissões
+chmod -R 755 data/
+chown -R 1000:1000 data/postgresql
+chown -R 1999:1999 data/zabbix
+chown -R 472:472 data/grafana
 ```
 
 ### 4. Inicie os Serviços
