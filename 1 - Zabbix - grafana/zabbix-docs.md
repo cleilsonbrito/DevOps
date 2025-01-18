@@ -1,22 +1,36 @@
-# Instalação do Zabbix 7.0 com PostgreSQL e Grafana usando Docker Compose
+# Zabbix Monitoring Stack com Docker
 
-Este guia fornece instruções detalhadas para configurar um ambiente de monitoramento completo usando Zabbix 7.0, PostgreSQL e Grafana utilizando Docker Compose.
+Este repositório contém a configuração necessária para implantar uma stack completa de monitoramento usando Zabbix 7.0, PostgreSQL e Grafana utilizando Docker Compose, com foco em segurança e manutenibilidade.
 
-Observação: Este é um projeto básico destinado a introduzir conceitos fundamentais sobre Infraestrutura como Código (IaC) na prática. Em uma etapa posterior, será publicado um tutorial sobre como criar este cenário utilizando Kubernetes, permitindo que os leitores aprendam a implantar e gerenciar aplicações de forma mais escalável e eficiente.
+## Arquitetura
+
+A stack é composta pelos seguintes serviços:
+- PostgreSQL 15 (Banco de dados)
+- Zabbix Server 7.0
+- Zabbix Web (interface com Nginx)
+- Grafana (visualização de dados)
+
+A infraestrutura utiliza redes Docker isoladas para melhor segurança:
+- `frontend-net`: Para serviços com interface web
+- `backend-net`: Para comunicação entre serviços internos
+- `db-net`: Exclusiva para comunicação com o banco de dados
 
 ## Pré-requisitos
 
-- Docker instalado (versão 20.10 ou superior)
-- Docker Compose instalado (versão 2.0 ou superior)
-- Git (opcional, para clonar o repositório)
-- 4GB de RAM mínimo recomendado
+- Docker Engine 20.10 ou superior
+- Docker Compose 2.0 ou superior
+- Git (para clonar o repositório)
+- Mínimo de 4GB de RAM
 - 10GB de espaço em disco disponível
 
 ## Estrutura do Projeto
 
 ```
-zabbix-docker/
+zabbix-monitoring/
 ├── docker-compose.yml
+├── .env.example
+├── .env
+├── .gitignore
 └── zbx_env/
     └── usr/lib/zabbix/
         ├── alertscripts/
@@ -28,20 +42,26 @@ zabbix-docker/
         └── mibs/
 ```
 
-## Passos para Instalação
+## Instalação e Configuração
 
-### 1. Preparação do Ambiente
-
-Primeiro, crie um novo diretório para o projeto e navegue até ele:
+### 1. Clone o Repositório
 
 ```bash
-mkdir zabbix-docker
-cd zabbix-docker
+git clone https://github.com/seu-usuario/zabbix-monitoring.git
+cd zabbix-monitoring
 ```
 
-### 2. Criação da Estrutura de Diretórios
+### 2. Configure as Variáveis de Ambiente
 
-Execute os seguintes comandos para criar a estrutura necessária:
+```bash
+# Copie o arquivo de exemplo
+cp .env.example .env
+
+# Edite o arquivo .env com suas configurações
+nano .env
+```
+
+### 3. Crie a Estrutura de Diretórios
 
 ```bash
 mkdir -p zbx_env/usr/lib/zabbix/alertscripts
@@ -53,31 +73,49 @@ mkdir -p zbx_env/var/lib/zabbix/ssh_keys
 mkdir -p zbx_env/var/lib/zabbix/mibs
 ```
 
-### 3. Configuração do Docker Compose
-
-Crie um arquivo `docker-compose.yml` com o seguinte conteúdo:
-
-```yaml
-[Conteúdo do docker-compose.yml fornecido anteriormente]
-```
-
-### 4. Inicialização dos Serviços
-
-Execute o seguinte comando para iniciar todos os serviços:
+### 4. Inicie os Serviços
 
 ```bash
+# Inicie todos os serviços
 docker-compose up -d
-```
 
-### 5. Verificação dos Serviços
-
-Verifique se todos os containers estão rodando corretamente:
-
-```bash
+# Verifique o status
 docker-compose ps
 ```
 
-## Acesso aos Serviços
+## Configuração das Variáveis de Ambiente
+
+O arquivo `.env` suporta as seguintes configurações:
+
+### Configurações do PostgreSQL
+```env
+POSTGRES_DB=zabbix
+POSTGRES_USER=seu_usuario
+POSTGRES_PASSWORD=sua_senha
+POSTGRES_HOST=postgres
+```
+
+### Configurações do Zabbix
+```env
+ZABBIX_SERVER_HOST=zabbix-server
+ZBX_TIMEOUT=30
+PHP_TZ=America/Sao_Paulo
+```
+
+### Configurações do Grafana
+```env
+GRAFANA_ADMIN_PASSWORD=sua_senha_grafana
+GRAFANA_PLUGINS=alexanderzobnin-zabbix-app
+```
+
+### Configurações de Rede
+```env
+FRONTEND_SUBNET=172.20.0.0/24
+BACKEND_SUBNET=172.20.1.0/24
+DB_SUBNET=172.20.2.0/24
+```
+
+## Portas e Acessos
 
 ### Zabbix Web Interface
 - URL: http://localhost:8080
@@ -89,24 +127,15 @@ docker-compose ps
 - URL: http://localhost:3000
 - Credenciais padrão:
   - Usuário: admin
-  - Senha: admin (será solicitada alteração no primeiro acesso)
+  - Senha: [definida no .env]
 
-## Configuração do Grafana com Zabbix
+### PostgreSQL
+- Porta: 5432 (acessível apenas através da rede db-net)
 
-1. Acesse o Grafana (http://localhost:3000)
-2. Faça login com as credenciais padrão
-3. Navegue até Configuration > Plugins
-4. Localize o plugin "Zabbix" (já instalado automaticamente)
-5. Configure uma nova fonte de dados:
-   - Tipo: Zabbix
-   - URL: http://zabbix-web:8080/api_jsonrpc.php
-   - Username: Admin
-   - Password: zabbix
-   - Direct DB Connection: Desabilitado
+## Manutenção
 
-## Comandos Úteis
+### Visualização de Logs
 
-### Visualizar logs dos serviços
 ```bash
 # Todos os serviços
 docker-compose logs -f
@@ -115,64 +144,79 @@ docker-compose logs -f
 docker-compose logs -f zabbix-server
 ```
 
-### Reiniciar serviços
+### Backup e Restauração
+
+#### Backup do PostgreSQL
 ```bash
-docker-compose restart
+docker-compose exec postgres pg_dump -U $POSTGRES_USER $POSTGRES_DB > backup_$(date +%Y%m%d).sql
 ```
 
-### Parar todos os serviços
+#### Restauração do PostgreSQL
 ```bash
+cat backup_YYYYMMDD.sql | docker-compose exec -T postgres psql -U $POSTGRES_USER $POSTGRES_DB
+```
+
+### Atualização dos Serviços
+
+```bash
+# Pare os serviços
 docker-compose down
+
+# Atualize as imagens
+docker-compose pull
+
+# Reinicie os serviços
+docker-compose up -d
 ```
 
-### Parar serviços e remover volumes
-```bash
-docker-compose down -v
-```
+## Segurança
 
-## Backup e Restauração
+Esta configuração implementa várias medidas de segurança:
 
-### Backup do PostgreSQL
-```bash
-docker-compose exec postgres pg_dump -U zabbix zabbix > backup_$(date +%Y%m%d).sql
-```
-
-### Restauração do PostgreSQL
-```bash
-cat backup_YYYYMMDD.sql | docker-compose exec -T postgres psql -U zabbix zabbix
-```
+- Segregação de redes para isolamento de serviços
+- Variáveis de ambiente para dados sensíveis
+- Healthchecks para garantir disponibilidade dos serviços
+- Volumes persistentes para dados importantes
+- Controle de acesso entre serviços
 
 ## Resolução de Problemas
 
-1. Se o Zabbix Server não iniciar, verifique os logs:
+### Problemas Comuns
+
+1. **Serviços não iniciam:**
+   ```bash
+   # Verifique os logs
+   docker-compose logs
+   ```
+
+2. **Erro de permissão nos diretórios:**
+   ```bash
+   chmod -R 755 zbx_env/
+   ```
+
+3. **Conexão com banco de dados falha:**
+   - Verifique as variáveis de ambiente no arquivo .env
+   - Confirme se o serviço postgres está rodando
+   - Verifique os logs do PostgreSQL
+
+### Verificação de Status
+
 ```bash
-docker-compose logs zabbix-server
-```
+# Status dos containers
+docker-compose ps
 
-2. Para problemas de permissão nos diretórios:
-```bash
-chmod -R 755 zbx_env/
-```
-
-3. Se o Grafana não conseguir conectar ao Zabbix:
-   - Verifique se o plugin do Zabbix está instalado corretamente
-   - Confirme se a URL da API está correta
-   - Verifique as credenciais de acesso
-
-## Atualização
-
-Para atualizar as imagens para novas versões:
-
-```bash
-docker-compose down
-docker-compose pull
-docker-compose up -d
+# Uso de recursos
+docker stats
 ```
 
 ## Contribuição
 
-Sinta-se à vontade para contribuir com este projeto através de Pull Requests ou reportando issues.
+1. Faça um Fork do projeto
+2. Crie uma Branch para sua Feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a Branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
 
 ## Licença
 
-Este projeto está sob a licença MIT.
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
