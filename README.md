@@ -5,7 +5,7 @@ Bem-vindo à seção de tutoriais do meu projeto sobre DevOps! Aqui você encont
 ## Índice de Tutoriais
 
 ### 1. Disponibilização de ambientes
-- [Docker - Instalação do Zabbix, Postgres, ngix e grafana](#)
+- [Docker - Instalação do Zabbix, Postgres, ngix e grafana](https://github.com/cleilsonbrito/DevOps/blob/main/1%20-%20Zabbix%20-%20grafana/zabbix-docs.md)
 
 ## Contribuições
 
